@@ -3,8 +3,22 @@ console.log('[Cramerr] Flappy Bird');
 const sprites = new Image();
 sprites.src = './sprites.png';
 
+const hitSound = new Audio();
+hitSound.src = './effects/hit.wav';
+
 const canvasEl = document.querySelector('#game-canvas');
 const context = canvasEl.getContext('2d');
+
+function collided(bird, ground) {
+    const birdY = bird.y + bird.height;
+    const groundY = ground.y;
+
+    if (birdY >= groundY) {
+        return true;
+    }
+
+    return false;
+}
 
 const background = {
     sourceX: 390,
@@ -59,29 +73,47 @@ const ground = {
     }
 };
 
-const bird = {
-    sourceX: 0,
-    sourceY: 0,
-    width: 33,
-    height: 24,
-    x: 10,
-    y: 50,
-    gravity: 0.25,
-    speed: 0,
-    update: function () {
-        this.speed += this.gravity;
-        this.y += this.speed;
-    },
-    draw: function () {
-        context.drawImage(
-            sprites,
-            this.sourceX, this.sourceY,
-            this.width, this.height,
-            this.x, this.y,
-            this.width, this.height
-        );
-    }
-};
+function createBird() {
+    const bird = {
+        sourceX: 0,
+        sourceY: 0,
+        width: 33,
+        height: 24,
+        x: 10,
+        y: 50,
+        gravity: 0.25,
+        jumpForce: 4.6,
+        speed: 0,
+        jump: function () {
+            this.speed = -(this.jumpForce);
+        },
+        update: function () {
+            if (collided(this, ground)) {
+                hitSound.play();
+
+                setTimeout(() => {
+                    changeScene(Scenes.START);
+                }, 300);
+
+                return;
+            }
+
+            this.speed += this.gravity;
+            this.y += this.speed;
+        },
+        draw: function () {
+            context.drawImage(
+                sprites,
+                this.sourceX, this.sourceY,
+                this.width, this.height,
+                this.x, this.y,
+                this.width, this.height
+            );
+        }
+    };
+
+    return bird;
+}
 
 const getReadyMessage = {
     sourceX: 134,
@@ -101,38 +133,48 @@ const getReadyMessage = {
     }
 };
 
-// Scenes
+const globals = {};
 
 let currentScene = {};
 function changeScene(newScene) {
     currentScene = newScene;
+
+    if (newScene.initialize) {
+        newScene.initialize();
+    }
 }
 
 const Scenes = {};
 
 Scenes.START = {
+    initialize: function () {
+        globals.bird = createBird();
+    },
     draw: function () {
         background.draw();
         ground.draw();
         getReadyMessage.draw();
-        bird.draw();
+        globals.bird.draw();
     },
-    click: function() {
+    click: function () {
         changeScene(Scenes.GAME);
     },
-    update: function() {}
-}
+    update: function () { }
+};
 
 Scenes.GAME = {
     draw: function () {
         background.draw();
         ground.draw();
-        bird.draw();
+        globals.bird.draw();
     },
-    update: function() {
-        bird.update();
+    click: function () {
+        globals.bird.jump();
+    },
+    update: function () {
+        globals.bird.update();
     }
-}
+};
 
 function loop() {
     currentScene.draw();
